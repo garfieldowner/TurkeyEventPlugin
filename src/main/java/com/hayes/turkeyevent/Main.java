@@ -249,7 +249,7 @@ public final class Main extends JavaPlugin implements Listener {
     @EventHandler
     public void onEntityDeath(EntityDeathEvent e) {
         if (e.getEntity().getKiller() instanceof Player) {
-            if (e.getEntity() instanceof Chicken && e.getEntity().getCustomName().equals(ChatColor.GOLD + "Turkey")) {
+            if (e.getEntity() instanceof Chicken && e.getEntity().getCustomName().equals(ChatColor.GOLD + "Turkey") && e.getEntity().isGlowing()) {
                 Player player = e.getEntity().getKiller();
 
                 e.getDrops().clear();
