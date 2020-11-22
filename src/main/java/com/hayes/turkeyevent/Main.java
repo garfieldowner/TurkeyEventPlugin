@@ -3,6 +3,7 @@ package com.hayes.turkeyevent;
 import com.hayes.turkeyevent.commands.CurrentEggs;
 import com.hayes.turkeyevent.commands.HighestEggs;
 import com.hayes.turkeyevent.commands.ReLore;
+import com.hayes.turkeyevent.commands.SpawnTurkey;
 import com.hayes.turkeyevent.mobs.Turkey;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
@@ -55,6 +56,7 @@ public final class Main extends JavaPlugin implements Listener {
         this.getCommand("relore").setExecutor(new ReLore());
         this.getCommand("currenteggs").setExecutor(new CurrentEggs());
         this.getCommand("highesteggs").setExecutor(new HighestEggs());
+        this.getCommand("spawnturkey").setExecutor(new SpawnTurkey());
         // Output to Console
         System.out.println("TURKEY EVENT - Plugin has loaded");
     }
@@ -106,7 +108,7 @@ public final class Main extends JavaPlugin implements Listener {
             public void run() {
                 Turkey.spawnTurkey(player);
             }
-        }.runTaskTimer(this, 1L, (int) (Math.random() * 12000) + 12000).getTaskId();
+        }.runTaskTimer(this, 12000L, (int) (Math.random() * 12000) + 12000).getTaskId();
 
         try {
             uuidFile.save(customUuidFile);

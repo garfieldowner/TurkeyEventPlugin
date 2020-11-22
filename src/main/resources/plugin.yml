@@ -6,11 +6,14 @@ authors: [ Hayes ]
 description: A plugin used for the Minecraft Server HungerMC during the Thanksgiving event
 commands:
   relore:
-    aliases: [rl]
+    aliases:
     description: A command used for reloring items
   currenteggs:
-    aliases: [ce]
+    aliases:
     description: A command used for checking the amount of eggs you have opened during the Thanksgiving event
   highesteggs:
-    aliases: [he]
+    aliases:
     description: A command used for checking who has opened the largest amount of eggs
+  spawnturkey:
+    aliases:
+    description: Spawn a turkey
