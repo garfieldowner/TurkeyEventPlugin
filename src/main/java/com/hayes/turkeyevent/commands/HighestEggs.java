@@ -21,21 +21,10 @@ public class HighestEggs implements CommandExecutor {
             if (uuidFile.contains("highesteggs.eggs") && uuidFile.contains("highesteggs.uuid")) {
                 int highestEggs = uuidFile.getInt("highesteggs.eggs");
                 UUID playerUUID = UUID.fromString(uuidFile.getString("highesteggs.uuid"));
-                if (Bukkit.getPlayer(playerUUID) != null) {
-                    String playerName = Bukkit.getPlayer(playerUUID).getName();
-                    System.out.println(playerName);
-                    player.sendMessage(ChatColor.GREEN + playerName + ChatColor.GRAY + " has opened the highest amount of eggs opened so far at " + ChatColor.GREEN + highestEggs);
-                    return true;
-                }
-                else if (Bukkit.getPlayer(playerUUID) == null) {
-                    String playerName = Bukkit.getOfflinePlayer(playerUUID).getName();
-                    System.out.println(playerName);
-                    player.sendMessage(ChatColor.GREEN + playerName + ChatColor.GRAY + " has opened the highest amount of eggs opened so far at " + ChatColor.GREEN + highestEggs);
-                    return true;
-                }
-                else {
-                    return false;
-                }
+                String playerName = Bukkit.getOfflinePlayer(playerUUID).getName();
+                System.out.println(playerName);
+                player.sendMessage(ChatColor.GREEN + playerName + ChatColor.GRAY + " has opened the highest amount of eggs opened so far at " + ChatColor.GREEN + highestEggs);
+                return true;
             }
         }
         else {

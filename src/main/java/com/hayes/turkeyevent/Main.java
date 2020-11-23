@@ -2,7 +2,6 @@ package com.hayes.turkeyevent;
 
 import com.hayes.turkeyevent.commands.CurrentEggs;
 import com.hayes.turkeyevent.commands.HighestEggs;
-import com.hayes.turkeyevent.commands.ReLore;
 import com.hayes.turkeyevent.commands.SpawnTurkey;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
@@ -11,7 +10,9 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.*;
+import org.bukkit.entity.Chicken;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -41,7 +42,7 @@ public final class Main extends JavaPlugin implements Listener {
     private FileConfiguration uuidFile;
 
     public static Main plugin;
-    private static final Map<Player, BukkitTask> tasks = new HashMap<>();
+    private final Map<UUID, BukkitTask> tasks = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -49,10 +50,11 @@ public final class Main extends JavaPlugin implements Listener {
         plugin = this;
         getServer().getPluginManager().registerEvents(this, this);
         createCustomConfig();
-        this.getCommand("relore").setExecutor(new ReLore());
         this.getCommand("currenteggs").setExecutor(new CurrentEggs());
         this.getCommand("highesteggs").setExecutor(new HighestEggs());
         this.getCommand("spawnturkey").setExecutor(new SpawnTurkey());
+
+        getServer().getOnlinePlayers().forEach(this::createTaskForPlayer);
         // Output to Console
         System.out.println("TURKEY EVENT - Plugin has loaded");
     }
@@ -62,6 +64,7 @@ public final class Main extends JavaPlugin implements Listener {
         // Plugin shutdown logic
         for (BukkitTask task : tasks.values()) {
             task.cancel();
+            Bukkit.getScheduler().cancelTask(task.getTaskId());
         }
         tasks.clear();
         // Output to Console
@@ -89,15 +92,12 @@ public final class Main extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onEntityDamage(EntityDamageEvent e) {
-        if (e.getEntity().getName().equals(ChatColor.GOLD + "Turkey") && e.getEntity().isGlowing()) {
+        if (e.getEntity().getName().equals(ChatColor.YELLOW + "Turkey") && e.getEntity().isGlowing()) {
             e.setCancelled(false);
         }
     }
 
-
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent e) {
-        Player player = e.getPlayer();
+    public void createTaskForPlayer(Player player){
         FileConfiguration uuidFile = this.getCustomConfig();
         String playerUUID = player.getUniqueId().toString();
         if (!uuidFile.contains(playerUUID)) {
@@ -105,8 +105,8 @@ public final class Main extends JavaPlugin implements Listener {
             uuidFile.set(playerUUID + ".eggs", 0);
         }
 
-        BukkitTask task = new TurkeySpawn(player).runTaskTimer(Main.plugin, 12000L, (long) (int) (Math.random() * 12000) + 12000);
-        tasks.put(player, task);
+        BukkitTask task = new TurkeySpawn(player, this).runTaskLater(Main.plugin, 12000L);
+        tasks.put(player.getUniqueId(), task);
 
         try {
             uuidFile.save(customUuidFile);
@@ -116,15 +116,20 @@ public final class Main extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent e) {
+        createTaskForPlayer(e.getPlayer());
+    }
+
+    @EventHandler
     public void onPlayerLeave(PlayerQuitEvent e) {
-        BukkitTask task = tasks.get(e.getPlayer());
+        BukkitTask task = tasks.get(e.getPlayer().getUniqueId());
         if (task == null) {
             return;
         }
-        if (Bukkit.getScheduler().isCurrentlyRunning(task.getTaskId())) {
-            task.cancel();
-            tasks.remove(e.getPlayer());
-        }
+
+        task.cancel();
+        Bukkit.getScheduler().cancelTask(task.getTaskId());
+        tasks.remove(e.getPlayer().getUniqueId());
     }
 
 
@@ -134,7 +139,7 @@ public final class Main extends JavaPlugin implements Listener {
             Player player = (Player) e.getEntity().getShooter();
             ItemStack egg = player.getInventory().getItemInMainHand();
             List<String> lore = player.getInventory().getItemInMainHand().getItemMeta().getLore();
-            if (lore != null && lore.get(1).equals(ChatColor.GREEN + "Thanksgiving Item")) {
+            if (lore != null && lore.get(0).equals(ChatColor.GRAY + "Thanksgiving Item")) {
 
                 double randNum = (Math.random() * 5);
                 ItemStack randItem;
@@ -210,19 +215,14 @@ public final class Main extends JavaPlugin implements Listener {
                     randItem = new ItemStack(Material.APPLE);
                 }
 
-
                 player.getWorld().dropItem(player.getLocation(), randItem);
                 player.playSound(player.getLocation(), ENTITY_CHICKEN_EGG, 1, 0);
                 player.sendMessage(ChatColor.GREEN + "You have opened a Reward Egg!");
 
                 if (egg.getAmount() == 1) {
-
                     egg = new ItemStack(Material.AIR);
-
                 } else {
-
                     egg.setAmount(egg.getAmount() - 1);
-
                 }
 
                 player.getInventory().setItemInMainHand(egg);
@@ -256,18 +256,15 @@ public final class Main extends JavaPlugin implements Listener {
     @EventHandler
     public void onEntityDeath(EntityDeathEvent e) {
         if (e.getEntity().getKiller() != null) {
-            if (e.getEntity() instanceof Chicken && e.getEntity().getCustomName().equals(ChatColor.GOLD + "Turkey") && e.getEntity().isGlowing()) {
+            if (e.getEntity() instanceof Chicken && e.getEntity().getCustomName().equals(ChatColor.YELLOW + "Turkey") && e.getEntity().isGlowing()) {
                 Player player = e.getEntity().getKiller();
-
                 e.getDrops().clear();
-
                 ItemStack item = new ItemStack(Material.EGG);
                 List<String> lore = new ArrayList<>();
-                lore.add(" ");
-                lore.add(ChatColor.GREEN + "Thanksgiving Item");
+                lore.add(ChatColor.GRAY + "Thanksgiving Item");
                 ItemMeta itemMeta = item.getItemMeta();
                 itemMeta.setLore(lore);
-                itemMeta.setDisplayName(ChatColor.GOLD + "Turkey" + ChatColor.WHITE + " Egg");
+                itemMeta.setDisplayName(ChatColor.GOLD + "Turkey Egg");
                 item.setItemMeta(itemMeta);
 
                 LootContext.Builder contextBuilder = new LootContext.Builder(e.getEntity().getLocation()).lootedEntity(e.getEntity()).killer(player);
@@ -309,4 +306,7 @@ public final class Main extends JavaPlugin implements Listener {
         }
     }
 
+    public Map<UUID, BukkitTask> getTasks() {
+        return tasks;
+    }
 }
