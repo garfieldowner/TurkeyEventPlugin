@@ -4,7 +4,6 @@ import com.hayes.turkeyevent.commands.CurrentEggs;
 import com.hayes.turkeyevent.commands.HighestEggs;
 import com.hayes.turkeyevent.commands.ReLore;
 import com.hayes.turkeyevent.commands.SpawnTurkey;
-import com.hayes.turkeyevent.mobs.Turkey;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -14,9 +13,10 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -25,16 +25,12 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.loot.LootContext;
 import org.bukkit.loot.LootTable;
-import org.bukkit.loot.Lootable;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.bukkit.Sound.ENTITY_CHICKEN_EGG;
@@ -43,9 +39,9 @@ public final class Main extends JavaPlugin implements Listener {
 
     private File customUuidFile;
     private FileConfiguration uuidFile;
-    private int playerTask;
 
     public static Main plugin;
+    private static final Map<Player, BukkitTask> tasks = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -64,6 +60,10 @@ public final class Main extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+        for (BukkitTask task : tasks.values()) {
+            task.cancel();
+        }
+        tasks.clear();
         // Output to Console
         System.out.println("TURKEY EVENT - Plugin has unloaded");
     }
@@ -87,9 +87,11 @@ public final class Main extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
-    public void onEntitySpawn(EntitySpawnEvent e) {
-        Entity ent = e.getEntity();
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onEntityDamage(EntityDamageEvent e) {
+        if (e.getEntity().getName().equals(ChatColor.GOLD + "Turkey") && e.getEntity().isGlowing()) {
+            e.setCancelled(false);
+        }
     }
 
 
@@ -103,12 +105,8 @@ public final class Main extends JavaPlugin implements Listener {
             uuidFile.set(playerUUID + ".eggs", 0);
         }
 
-        playerTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                Turkey.spawnTurkey(player);
-            }
-        }.runTaskTimer(this, 12000L, (int) (Math.random() * 12000) + 12000).getTaskId();
+        BukkitTask task = new TurkeySpawn(player).runTaskTimer(Main.plugin, 12000L, (long) (int) (Math.random() * 12000) + 12000);
+        tasks.put(player, task);
 
         try {
             uuidFile.save(customUuidFile);
@@ -119,7 +117,14 @@ public final class Main extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onPlayerLeave(PlayerQuitEvent e) {
-        Bukkit.getScheduler().cancelTask(playerTask);
+        BukkitTask task = tasks.get(e.getPlayer());
+        if (task == null) {
+            return;
+        }
+        if (Bukkit.getScheduler().isCurrentlyRunning(task.getTaskId())) {
+            task.cancel();
+            tasks.remove(e.getPlayer());
+        }
     }
 
 
@@ -250,7 +255,7 @@ public final class Main extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onEntityDeath(EntityDeathEvent e) {
-        if (e.getEntity().getKiller() instanceof Player) {
+        if (e.getEntity().getKiller() != null) {
             if (e.getEntity() instanceof Chicken && e.getEntity().getCustomName().equals(ChatColor.GOLD + "Turkey") && e.getEntity().isGlowing()) {
                 Player player = e.getEntity().getKiller();
 
